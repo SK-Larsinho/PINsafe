@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>PIN-Tresor</title>
+<meta name="description" content="Verschlüsselter PIN-Safe">
+<meta name="theme-color" content="#e4e6ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PIN-Tresor">
+</head>
+<body>
+<style>
+@font-face{font-family:'Familjen Grotesk';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/familjen-grotesk-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'Familjen Grotesk';font-weight:500;font-style:normal;font-display:swap;src:url(fonts/familjen-grotesk-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Familjen Grotesk';font-weight:600;font-style:normal;font-display:swap;src:url(fonts/familjen-grotesk-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Familjen Grotesk';font-weight:700;font-style:normal;font-display:swap;src:url(fonts/familjen-grotesk-latin-700-normal.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-weight:400;font-style:normal;font-display:swap;src:url(fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-weight:600;font-style:normal;font-display:swap;src:url(fonts/jetbrains-mono-latin-600-normal.woff2) format('woff2')}
+html{box-sizing:border-box;color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;font-family:system-ui,sans-serif;overscroll-behavior:none}
+img{max-width:100%}[hidden]{display:none!important}
+
+/* Layout: one-screen phone app, single 480px column. Lock = steel dial + keypad; Vault = sticky bar, search, list, bottom action. */
+:root{
+  --bg:#e4e6ea; --surface:#f5f6f8; --raised:#ffffff; --fg:#14171c; --muted:#59606b; --line:#cdd1d8;
+  --accent:#94661f; --accent-soft:rgba(148,102,31,.12); --accent-ink:#ffffff; --danger:#b3261e; --danger-soft:rgba(179,38,30,.1);
+  --steel-1:#f4f5f7; --steel-2:#c9ced6; --shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 6px 18px rgba(20,23,28,.10);
+  --display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1115; --surface:#171a20; --raised:#1e222a; --fg:#e7e9ed; --muted:#8c939e; --line:#2a2f38;
+  --accent:#d6a24c; --accent-soft:rgba(214,162,76,.14); --accent-ink:#1a1408; --danger:#ef6b5f; --danger-soft:rgba(239,107,95,.12);
+  --steel-1:#262a32; --steel-2:#14171c; --shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 8px 22px rgba(0,0,0,.45);
+  color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a20; --raised:#1e222a; --fg:#e7e9ed; --muted:#8c939e; --line:#2a2f38;
+  --accent:#d6a24c; --accent-soft:rgba(214,162,76,.14); --accent-ink:#1a1408; --danger:#ef6b5f; --danger-soft:rgba(239,107,95,.12);
+  --steel-1:#262a32; --steel-2:#14171c; --shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 8px 22px rgba(0,0,0,.45);
+  color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:16px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.01em;font-size:17px}
+.mark{width:22px;height:22px;border-radius:6px;border:2px solid var(--accent);position:relative}
+.mark::after{content:"";position:absolute;inset:5px;border-radius:50%;border:2px solid var(--accent)}
+
+/* ---------- Lock screen ---------- */
+.lock{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:14px;padding-block:18px 14px}
+.dial{width:clamp(190px,36vh,272px);aspect-ratio:1;max-width:100%;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 35% 28%,var(--steel-1),var(--steel-2) 78%);box-shadow:var(--shadow);display:grid;place-items:center}
+.dial svg{position:absolute;inset:0;width:100%;height:100%;transition:transform .5s cubic-bezier(.3,1.4,.5,1)}
+.dial svg line{stroke:var(--muted);stroke-width:1.2;opacity:.55}
+.dial svg line.major{stroke:var(--accent);stroke-width:2;opacity:.9}
+.dial-in{width:76%;aspect-ratio:1;border-radius:50%;background:var(--surface);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:12px;text-align:center}
+.dial-in h1{margin:0;font-size:clamp(14px,2.2vh,17px);font-weight:600;text-wrap:balance}
+.dots{display:flex;gap:8px;height:14px;align-items:center}
+.dot{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--muted);transition:background .12s,border-color .12s,transform .12s}
+.dot.opt{border-style:dashed;opacity:.55}
+.dot.on{background:var(--accent);border-color:var(--accent);transform:scale(1.08)}
+.hint{margin:0;font-size:12.5px;color:var(--muted);min-height:2.6em;max-width:16em;text-wrap:balance}
+.hint.err{color:var(--danger)}
+.shake{animation:shake .38s}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+
+.keypad{display:grid;grid-template-columns:repeat(3,var(--k));gap:clamp(10px,1.8vh,16px) 22px;--k:clamp(58px,9.2vh,74px)}
+.key{width:var(--k);height:var(--k);border-radius:50%;background:var(--raised);box-shadow:var(--shadow);border:1px solid var(--line);
+  font-family:var(--mono);font-size:clamp(22px,3.4vh,28px);font-weight:400;display:grid;place-items:center;transition:transform .08s,background .12s}
+.key:active,.key.press{transform:scale(.94);background:var(--accent-soft)}
+.key.fn{background:transparent;box-shadow:none;border-color:transparent;font-family:var(--display);font-size:15px;font-weight:600;color:var(--muted)}
+.key.ok{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-family:var(--display);font-size:16px;font-weight:700}
+.key:disabled{opacity:.35;cursor:default}
+.lock-links{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;min-height:24px}
+.link{color:var(--muted);font-size:14px;text-decoration:underline;text-underline-offset:3px;padding:4px}
+
+/* ---------- Vault ---------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:14px 10px}
+.bar-actions{display:flex;gap:8px}
+.chip{height:38px;padding:0 14px;border-radius:19px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.chip svg{width:17px;height:17px}
+.search{width:100%;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:0 14px;font:inherit;font-size:16px}
+.count{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 2px 8px;font-variant-numeric:tabular-nums}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.item.open{border-color:var(--accent)}
+.row{width:100%;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;text-align:left;padding:14px 16px}
+.row .name{font-weight:600;font-size:16px;min-width:0;overflow-wrap:anywhere}
+.row .meta{grid-column:1;font-size:13px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.row .code{grid-row:1 / span 2;grid-column:2;font-family:var(--mono);font-size:15px;color:var(--muted);letter-spacing:.12em}
+.item.open .code{font-size:22px;color:var(--fg);letter-spacing:.14em;font-weight:600}
+.tag{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-right:6px}
+.actions{display:flex;gap:8px;padding:0 16px 14px;align-items:center}
+.btn{height:40px;padding:0 16px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--raised)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger);border-color:var(--danger);background:var(--danger-soft)}
+.btn.wide{width:100%;height:48px;font-size:15px}
+.timer{margin-left:auto;font-size:12px;white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--muted);padding:40px 12px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.empty strong{color:var(--fg);font-size:17px}
+.foot{position:sticky;bottom:0;padding-block:14px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 30%);margin-top:auto}
+
+/* ---------- Sheets ---------- */
+.scrim{position:fixed;inset:0;z-index:20;background:rgba(10,12,15,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:480px;max-height:92%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;
+  padding:10px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;gap:14px;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.4}}
+.grip{width:40px;height:4px;border-radius:2px;background:var(--line);align-self:center}
+.sheet h2{margin:0;font-size:20px}
+.sheet h3{margin:6px 0 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sheet p{margin:0;color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:600}
+.field input,.field textarea,.field select{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--raised);color:var(--fg);font:inherit;font-size:16px;padding:11px 12px}
+.field input.code-in{font-family:var(--mono);letter-spacing:.12em}
+.field textarea{resize:vertical;min-height:70px}
+.field textarea.mono{font-family:var(--mono);font-size:12px;letter-spacing:0;min-height:96px;word-break:break-all}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.row2{display:flex;gap:8px;flex-wrap:wrap}
+.row2 .btn{flex:1}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;height:40px;font-size:14px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--fg)}
+.seg button+button{border-left:1px solid var(--line)}
+.note{font-size:13px;padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--fg)}
+.sep{height:1px;background:var(--line);margin:4px 0}
+
+.toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:30;
+  background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;max-width:calc(100% - 32px);text-align:center}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="app">
+  <!-- LOCK -->
+  <section id="lock" class="lock">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>PIN-Tresor</div>
+    <div class="dial" id="dial">
+      <svg id="ticks" viewBox="0 0 200 200" aria-hidden="true"></svg>
+      <div class="dial-in">
+        <h1 id="lockTitle">Master-PIN festlegen</h1>
+        <div class="dots" id="dots" aria-live="polite"></div>
+        <p class="hint" id="lockHint">6 bis 8 Ziffern</p>
+      </div>
+    </div>
+    <div class="keypad" id="keypad">
+      <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+      <button class="key fn" data-k="del" aria-label="Löschen">Löschen</button><button class="key" data-k="0">0</button><button class="key ok" data-k="ok">OK</button>
+    </div>
+    <div class="lock-links">
+      <button class="link" id="lnkCancel" hidden>Abbrechen</button>
+      <button class="link" id="lnkImport" hidden>Backup einspielen</button>
+      <button class="link" id="lnkForgot" hidden>PIN vergessen?</button>
+    </div>
+  </section>
+
+  <!-- VAULT -->
+  <section id="vault" hidden style="display:flex;flex-direction:column;flex:1">
+    <header class="bar">
+      <div class="brand"><span class="mark" aria-hidden="true"></span>PIN-Tresor</div>
+      <div class="bar-actions">
+        <button class="chip" id="btnSettings" aria-label="Einstellungen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <button class="chip" id="btnLock">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Sperren
+        </button>
+      </div>
+    </header>
+    <input class="search" id="search" type="search" placeholder="Suchen, z. B. Sparkasse" autocomplete="off">
+    <div class="count" id="count"></div>
+    <ul class="list" id="list"></ul>
+    <div class="empty" id="empty" hidden>
+      <strong>Noch keine Einträge</strong>
+      <span>Lege deinen ersten Code an, zum Beispiel die PIN deiner EC-Karte oder den Code der Alarmanlage.</span>
+    </div>
+    <div class="foot"><button class="btn primary wide" id="btnAdd">+ Neuer Eintrag</button></div>
+  </section>
+</div>
+
+<!-- SHEETS -->
+<div class="scrim" id="scrim" hidden>
+  <!-- Edit -->
+  <form class="sheet" id="shEdit" hidden autocomplete="off">
+    <div class="grip"></div>
+    <h2 id="editTitle">Neuer Eintrag</h2>
+    <div class="field"><label for="fName">Bezeichnung</label><input id="fName" required maxlength="60" placeholder="z. B. EC-Karte Sparkasse"></div>
+    <div class="field"><label for="fKind">Art</label>
+      <select id="fKind">
+        <option value="karte">Bankkarte</option><option value="sim">SIM / Handy</option><option value="tuer">Tür / Alarm / Schloss</option>
+        <option value="geraet">Gerät / App</option><option value="sonst">Sonstiges</option>
+      </select></div>
+    <div class="field"><label for="fCode">PIN / Code</label><input id="fCode" class="code-in" required maxlength="64" inputmode="numeric" autocomplete="off" spellcheck="false"></div>
+    <label class="check"><input type="checkbox" id="fAlpha"> Code enthält Buchstaben</label>
+    <div class="field"><label for="fNote">Notiz (optional)</label><textarea id="fNote" maxlength="300" placeholder="z. B. PUK: 12345678, Karte endet auf 4821"></textarea></div>
+    <div class="row2"><button type="button" class="btn" data-close>Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+    <button type="button" class="btn danger" id="btnDelete" hidden>Eintrag löschen</button>
+  </form>
+
+  <!-- Settings -->
+  <div class="sheet" id="shSettings" hidden>
+    <div class="grip"></div>
+    <h2>Einstellungen</h2>
+    <h3>Automatisch sperren nach</h3>
+    <div class="seg" id="segLock">
+      <button data-v="30" aria-pressed="false">30 s</button><button data-v="60" aria-pressed="false">1 min</button><button data-v="300" aria-pressed="false">5 min</button>
+    </div>
+    <p>Der Tresor sperrt sich außerdem sofort, wenn du die App verlässt.</p>
+    <div class="sep"></div>
+    <h3>Master-PIN</h3>
+    <button class="btn wide" id="btnChangePin">Master-PIN ändern</button>
+    <div class="sep"></div>
+    <h3>Backup</h3>
+    <p>Das Backup ist mit deiner Master-PIN verschlüsselt. Speichere den Text z. B. in einer Notiz. Ohne Backup sind die Daten weg, wenn der Browser-Speicher gelöscht wird.</p>
+    <div class="field"><textarea id="exportText" class="mono" readonly aria-label="Backup-Text"></textarea></div>
+    <button class="btn primary wide" id="btnCopyBackup">Backup kopieren</button>
+    <div class="sep"></div>
+    <h3>Gefahrenzone</h3>
+    <button class="btn danger wide" id="btnWipe">Tresor löschen</button>
+    <button class="btn wide" data-close>Fertig</button>
+  </div>
+
+  <!-- Import -->
+  <div class="sheet" id="shImport" hidden>
+    <div class="grip"></div>
+    <h2>Backup einspielen</h2>
+    <p>Füge den Backup-Text ein. Danach entsperrst du mit der Master-PIN, die beim Erstellen des Backups galt.</p>
+    <div class="field"><textarea id="importText" class="mono" placeholder="PINTRESOR1.…" aria-label="Backup-Text einfügen"></textarea></div>
+    <p class="hint err" id="importErr"></p>
+    <div class="row2"><button class="btn" data-close>Abbrechen</button><button class="btn primary" id="btnDoImport">Einspielen</button></div>
+  </div>
+
+  <!-- Confirm -->
+  <div class="sheet" id="shConfirm" hidden>
+    <div class="grip"></div>
+    <h2 id="cfTitle"></h2>
+    <p id="cfText"></p>
+    <div class="row2"><button class="btn" data-close>Abbrechen</button><button class="btn danger" id="cfOk"></button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const STORE = 'pintresor.v1', META = 'pintresor.meta', ITER = 310000, MIN = 6, MAX = 8;
+const KINDS = {karte:'Bankkarte', sim:'SIM / Handy', tuer:'Tür / Alarm', geraet:'Gerät / App', sonst:'Sonstiges'};
+const te = new TextEncoder(), td = new TextDecoder();
+
+/* ---------- storage ---------- */
+const lsGet = k => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const lsSet = (k,v) => { try { localStorage.setItem(k,v); return true; } catch(e) { return false; } };
+const lsDel = k => { try { localStorage.removeItem(k); } catch(e) {} };
+const readBlob = () => { try { const b = JSON.parse(lsGet(STORE)); return b && b.ct ? b : null; } catch(e) { return null; } };
+
+/* ---------- crypto ---------- */
+const b64 = buf => { const u = new Uint8Array(buf); let s=''; for (let i=0;i<u.length;i++) s += String.fromCharCode(u[i]); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function deriveKey(pin, salt, iter){
+  const base = await crypto.subtle.importKey('raw', te.encode(pin), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:iter, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function openBlob(pin, blob){
+  const salt = unb64(blob.salt);
+  const key = await deriveKey(pin, salt, blob.iter);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(blob.iv)}, key, unb64(blob.ct));
+  return {key, salt, iter:blob.iter, data:JSON.parse(td.decode(pt))};
+}
+async function seal(){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, S.key, te.encode(JSON.stringify(S.data)));
+  const blob = {v:1, iter:S.iter, salt:b64(S.salt), iv:b64(iv), ct:b64(ct)};
+  if (!lsSet(STORE, JSON.stringify(blob))) toast('Speichern fehlgeschlagen: Der Browser blockiert den Speicher. Mach jetzt ein Backup.', 5000);
+}
+
+/* ---------- state ---------- */
+let S = null;               // unlocked session {key,salt,iter,data}
+let mode = 'unlock', buf = '', first = '', busy = false;
+let revealed = null, revealTimer = null, revealLeft = 0, idleTimer = null, cdTimer = null;
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg, ms=2200){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, ms); }
+
+/* ---------- dial ticks ---------- */
+(() => { const svg=$('#ticks'); let h='';
+  for (let i=0;i<60;i++){ const a=i*6*Math.PI/180, major=i%5===0, r1=major?86:90, r2=96;
+    h+=`<line class="${major?'major':''}" x1="${100+r1*Math.sin(a)}" y1="${100-r1*Math.cos(a)}" x2="${100+r2*Math.sin(a)}" y2="${100-r2*Math.cos(a)}"/>`; }
+  svg.innerHTML=h; })();
+let dialTurn = 0;
+const turnDial = d => { dialTurn += d; $('#ticks').style.transform = `rotate(${dialTurn}deg)`; };
+
+/* ---------- throttling ---------- */
+const getMeta = () => { try { return JSON.parse(lsGet(META)) || {fails:0, until:0}; } catch(e) { return {fails:0, until:0}; } };
+const setMeta = m => lsSet(META, JSON.stringify(m));
+function registerFail(){
+  const m = getMeta(); m.fails++;
+  if (m.fails >= 5) m.until = Date.now() + Math.min(3600, 30 * 2 ** (m.fails - 5)) * 1000;
+  setMeta(m); checkThrottle();
+}
+function checkThrottle(){
+  clearInterval(cdTimer);
+  const tick = () => {
+    const left = Math.ceil((getMeta().until - Date.now()) / 1000);
+    const locked = mode === 'unlock' && left > 0;
+    document.querySelectorAll('.key').forEach(k => k.disabled = locked);
+    if (locked) setHint(`Zu viele Fehlversuche. Warte ${left >= 60 ? Math.ceil(left/60)+' min' : left+' s'}.`, true);
+    else { clearInterval(cdTimer); if (mode === 'unlock' && $('#lockHint').dataset.cd) setHint('Gib deine Master-PIN ein'); }
+    $('#lockHint').dataset.cd = locked ? '1' : '';
+  };
+  tick(); cdTimer = setInterval(tick, 1000);
+}
+const throttled = () => mode === 'unlock' && getMeta().until > Date.now();
+
+/* ---------- lock screen ---------- */
+const TEXT = {
+  setup:        ['Master-PIN festlegen', '6 bis 8 Ziffern. Damit öffnest du den Tresor.'],
+  confirm:      ['PIN wiederholen', 'Gib dieselbe PIN noch einmal ein.'],
+  unlock:       ['Tresor entsperren', 'Gib deine Master-PIN ein'],
+  change:       ['Neue Master-PIN', '6 bis 8 Ziffern'],
+  changeConfirm:['Neue PIN wiederholen', 'Gib dieselbe PIN noch einmal ein.'],
+};
+function setHint(t, err=false){ const h=$('#lockHint'); h.textContent=t; h.classList.toggle('err', err); }
+function setMode(m, err){
+  mode = m; buf = '';
+  $('#lockTitle').textContent = TEXT[m][0];
+  err ? setHint(err, true) : setHint(TEXT[m][1]);
+  $('#lnkCancel').hidden = !(m === 'change' || m === 'changeConfirm' || (m === 'setup' && false));
+  $('#lnkImport').hidden = m !== 'setup';
+  $('#lnkForgot').hidden = m !== 'unlock';
+  if (m === 'confirm' || m === 'changeConfirm') $('#lnkCancel').hidden = false;
+  renderDots(); checkThrottle();
+}
+function renderDots(){
+  const n = Math.max(MIN, Math.min(MAX, buf.length + (buf.length >= MIN && buf.length < MAX ? 1 : 0)));
+  let h=''; for (let i=0;i<n;i++) h += `<span class="dot ${i<buf.length?'on':''} ${i>=MIN?'opt':''}"></span>`;
+  $('#dots').innerHTML = h;
+  $('#dots').setAttribute('aria-label', `${buf.length} Ziffern eingegeben`);
+}
+function shake(msg){
+  const d=$('#dial'); d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
+  setHint(msg, true); turnDial(-30);
+  try { navigator.vibrate && navigator.vibrate(120); } catch(e){}
+}
+function showLock(m, err){ $('#vault').hidden = true; $('#lock').hidden = false; closeSheet(); setMode(m, err); }
+
+function press(k){
+  if (busy || throttled()) return;
+  if (k === 'del') { if (buf) { buf = buf.slice(0,-1); turnDial(-6); } }
+  else if (k === 'ok') return submit();
+  else if (buf.length < MAX) { buf += k; turnDial(6); }
+  if (!$('#lockHint').classList.contains('err') || k !== 'ok') { if (buf.length === 1) setHint(TEXT[mode][1]); }
+  renderDots();
+}
+async function submit(){
+  if (buf.length < MIN) return shake(`Mindestens ${MIN} Ziffern`);
+  if (mode === 'setup' || mode === 'change') { first = buf; return setMode(mode === 'setup' ? 'confirm' : 'changeConfirm'); }
+  if (mode === 'confirm' || mode === 'changeConfirm') {
+    const isNew = mode === 'confirm';
+    if (buf !== first) { first=''; setMode(isNew ? 'setup' : 'change'); return shake('Die PINs stimmen nicht überein. Bitte neu eingeben.'); }
+    busy = true; setHint('Verschlüssele …');
+    try {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const key = await deriveKey(buf, salt, ITER);
+      const data = isNew ? {entries:[], settings:{autolock:60}} : S.data;
+      S = {key, salt, iter:ITER, data};
+      await seal(); setMeta({fails:0, until:0});
+      first = ''; buf = '';
+      toast(isNew ? 'Tresor angelegt' : 'Master-PIN geändert');
+      showVault();
+    } catch(e) { setHint('Verschlüsselung fehlgeschlagen. Dein Browser unterstützt sie nicht.', true); }
+    busy = false; return;
+  }
+  if (mode === 'unlock') {
+    const blob = readBlob(); if (!blob) return showLock('setup');
+    busy = true; setHint('Prüfe …');
+    try {
+      S = await openBlob(buf, blob);
+      S.data.entries ||= []; S.data.settings ||= {autolock:60};
+      setMeta({fails:0, until:0}); busy = false; buf = ''; showVault();
+    } catch(e) {
+      busy = false; buf = ''; renderDots(); registerFail();
+      if (!throttled()) { const left = Math.max(0, 5 - getMeta().fails); shake(left ? `Falsche PIN. Noch ${left} Versuch${left===1?'':'e'} vor der Wartezeit.` : 'Falsche PIN'); }
+      else shake($('#lockHint').textContent);
+    }
+  }
+}
+$('#keypad').addEventListener('click', e => { const b = e.target.closest('.key'); if (b) press(b.dataset.k); });
+document.addEventListener('keydown', e => {
+  if ($('#lock').hidden || !$('#scrim').hidden) return;
+  let k = null;
+  if (/^[0-9]$/.test(e.key)) k = e.key; else if (e.key === 'Backspace') k = 'del'; else if (e.key === 'Enter') k = 'ok';
+  if (!k) return; e.preventDefault(); press(k);
+  const b = document.querySelector(`.key[data-k="${k}"]`); if (b) { b.classList.add('press'); setTimeout(()=>b.classList.remove('press'),110); }
+});
+$('#lnkCancel').onclick = () => { first=''; if (S && (mode==='change'||mode==='changeConfirm')) showVault(); else setMode('setup'); };
+$('#lnkImport').onclick = () => openImport();
+$('#lnkForgot').onclick = () => confirmSheet('Tresor zurücksetzen?',
+  'Ohne Master-PIN lassen sich deine Einträge nicht entschlüsseln. Zurücksetzen löscht alle Daten auf diesem Gerät. Ein vorhandenes Backup kannst du danach mit der alten PIN wieder einspielen.',
+  'Alles löschen', wipe);
+
+/* ---------- vault ---------- */
+function showVault(){ $('#lock').hidden = true; $('#vault').hidden = false; $('#search').value=''; hideReveal(); renderList(); resetIdle(); }
+function lock(msg){
+  if (!S) return;
+  S = null; hideReveal(); clearTimeout(idleTimer);
+  $('#list').innerHTML = ''; $('#exportText').value = '';
+  showLock('unlock'); if (msg) setHint(msg);
+}
+function renderList(){
+  if (!S) return;
+  const q = $('#search').value.trim().toLowerCase();
+  const all = S.data.entries;
+  const items = all.filter(e => !q || (e.name+' '+(e.note||'')+' '+KINDS[e.kind]).toLowerCase().includes(q))
+                   .sort((a,b) => a.name.localeCompare(b.name, 'de'));
+  const ul = $('#list'); ul.innerHTML = '';
+  for (const e of items) {
+    const li = document.createElement('li'); li.className = 'item' + (revealed === e.id ? ' open' : '');
+    const row = document.createElement('button'); row.className = 'row'; row.setAttribute('aria-expanded', revealed === e.id);
+    const name = document.createElement('span'); name.className='name'; name.textContent = e.name;
+    const code = document.createElement('span'); code.className='code'; code.textContent = revealed === e.id ? e.code : '••••';
+    const meta = document.createElement('span'); meta.className='meta';
+    const tag = document.createElement('span'); tag.className='tag'; tag.textContent = KINDS[e.kind] || 'Sonstiges';
+    meta.append(tag, document.createTextNode(e.note ? e.note : ''));
+    row.append(name, code, meta);
+    row.onclick = () => { revealed === e.id ? hideReveal() : reveal(e.id); };
+    li.append(row);
+    if (revealed === e.id) {
+      const act = document.createElement('div'); act.className='actions';
+      const cp = document.createElement('button'); cp.className='btn primary'; cp.textContent='Kopieren';
+      cp.onclick = () => copy(e.code, 'Code kopiert');
+      const ed = document.createElement('button'); ed.className='btn'; ed.textContent='Bearbeiten';
+      ed.onclick = () => openEdit(e);
+      const tm = document.createElement('span'); tm.className='timer'; tm.id='revealTimer'; tm.textContent = `noch ${revealLeft} s`;
+      act.append(cp, ed, tm); li.append(act);
+    }
+    ul.append(li);
+  }
+  $('#empty').hidden = all.length > 0;
+  $('#count').textContent = all.length ? (q ? `${items.length} von ${all.length} Einträgen` : `${all.length} Eintr${all.length===1?'ag':'äge'}`) : '';
+}
+function reveal(id){
+  revealed = id; revealLeft = 10; clearInterval(revealTimer);
+  revealTimer = setInterval(() => { revealLeft--; const t=$('#revealTimer'); if (t) t.textContent = `noch ${revealLeft} s`; if (revealLeft <= 0) hideReveal(); }, 1000);
+  renderList();
+}
+function hideReveal(){ clearInterval(revealTimer); if (revealed !== null) { revealed = null; renderList(); } }
+$('#search').addEventListener('input', () => { hideReveal(); renderList(); });
+$('#btnLock').onclick = () => lock();
+$('#btnAdd').onclick = () => openEdit(null);
+$('#btnSettings').onclick = () => openSettings();
+
+async function copy(text, okMsg){
+  try { await navigator.clipboard.writeText(text); toast(okMsg); }
+  catch(e) { toast('Kopieren nicht erlaubt. Halte den Text gedrückt, um ihn zu markieren.', 3500); }
+}
+
+/* ---------- sheets ---------- */
+function openSheet(id){ $('#scrim').hidden = false; document.querySelectorAll('.sheet').forEach(s => s.hidden = s.id !== id); }
+function closeSheet(){ $('#scrim').hidden = true; document.querySelectorAll('.sheet').forEach(s => s.hidden = true); }
+$('#scrim').addEventListener('click', e => { if (e.target.id === 'scrim' || e.target.closest('[data-close]')) closeSheet(); });
+
+let editing = null, delArmed = false;
+function setAlpha(on){ $('#fAlpha').checked = on; $('#fCode').inputMode = on ? 'text' : 'numeric'; }
+$('#fAlpha').onchange = e => { setAlpha(e.target.checked); $('#fCode').focus(); };
+function openEdit(e){
+  hideReveal(); editing = e; delArmed = false;
+  $('#editTitle').textContent = e ? 'Eintrag bearbeiten' : 'Neuer Eintrag';
+  $('#fName').value = e ? e.name : ''; $('#fKind').value = e ? e.kind : 'karte';
+  $('#fCode').value = e ? e.code : ''; $('#fNote').value = e ? (e.note||'') : '';
+  setAlpha(e ? /\D/.test(e.code) : false);
+  $('#btnDelete').hidden = !e; $('#btnDelete').textContent = 'Eintrag löschen';
+  openSheet('shEdit'); setTimeout(() => $('#fName').focus(), 60);
+}
+$('#shEdit').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const name = $('#fName').value.trim(), code = $('#fCode').value.trim();
+  if (!name || !code) return;
+  const rec = {id: editing ? editing.id : (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()+Math.random())),
+               name, kind: $('#fKind').value, code, note: $('#fNote').value.trim(), updated: Date.now()};
+  const list = S.data.entries; const i = list.findIndex(x => x.id === rec.id);
+  i >= 0 ? list[i] = rec : list.push(rec);
+  await seal(); closeSheet(); renderList(); toast('Gespeichert');
+});
+$('#btnDelete').onclick = async () => {
+  if (!delArmed) { delArmed = true; $('#btnDelete').textContent = 'Tippe erneut, um endgültig zu löschen'; return; }
+  S.data.entries = S.data.entries.filter(x => x.id !== editing.id);
+  await seal(); closeSheet(); renderList(); toast('Eintrag gelöscht');
+};
+
+function openSettings(){
+  hideReveal();
+  const v = S.data.settings.autolock;
+  document.querySelectorAll('#segLock button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === v));
+  const blob = lsGet(STORE); $('#exportText').value = blob ? 'PINTRESOR1.' + btoa(blob) : '';
+  openSheet('shSettings');
+}
+$('#segLock').onclick = async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.data.settings.autolock = +b.dataset.v; await seal(); openSettings(); resetIdle();
+};
+$('#btnCopyBackup').onclick = () => { const t=$('#exportText'); t.focus(); t.select(); copy(t.value, 'Backup kopiert. Speichere es an einem sicheren Ort.'); };
+$('#btnChangePin').onclick = () => { closeSheet(); $('#vault').hidden = true; $('#lock').hidden = false; first=''; setMode('change'); };
+$('#btnWipe').onclick = () => confirmSheet('Tresor löschen?', 'Alle Einträge auf diesem Gerät werden gelöscht. Das lässt sich nur mit einem Backup rückgängig machen.', 'Endgültig löschen', wipe);
+
+function wipe(){ lsDel(STORE); lsDel(META); S = null; $('#list').innerHTML=''; toast('Tresor gelöscht'); showLock('setup'); }
+
+function confirmSheet(title, text, okLabel, fn){
+  $('#cfTitle').textContent = title; $('#cfText').textContent = text; $('#cfOk').textContent = okLabel;
+  $('#cfOk').onclick = () => { closeSheet(); fn(); };
+  openSheet('shConfirm');
+}
+
+function openImport(){ $('#importText').value=''; $('#importErr').textContent=''; openSheet('shImport'); }
+$('#btnDoImport').onclick = () => {
+  const raw = $('#importText').value.trim().replace(/\s+/g,'');
+  let blob = null;
+  try { if (!raw.startsWith('PINTRESOR1.')) throw 0; blob = JSON.parse(atob(raw.slice(11))); if (!blob.ct || !blob.iv || !blob.salt || !blob.iter) throw 0; }
+  catch(e) { $('#importErr').textContent = 'Das ist kein gültiger Backup-Text. Er beginnt mit „PINTRESOR1.“'; return; }
+  const apply = () => { lsSet(STORE, JSON.stringify(blob)); setMeta({fails:0, until:0}); S = null; showLock('unlock', null); setHint('Backup eingespielt. Gib die Master-PIN des Backups ein.'); };
+  if (readBlob()) confirmSheet('Aktuellen Tresor ersetzen?', 'Auf diesem Gerät gibt es schon einen Tresor. Er wird durch das Backup überschrieben.', 'Ersetzen', apply);
+  else apply();
+};
+
+/* ---------- auto-lock ---------- */
+function resetIdle(){ clearTimeout(idleTimer); if (S) idleTimer = setTimeout(() => lock('Automatisch gesperrt'), (S.data.settings.autolock||60)*1000); }
+['pointerdown','keydown','input','scroll'].forEach(ev => document.addEventListener(ev, () => { if (S) resetIdle(); }, {passive:true, capture:true}));
+document.addEventListener('visibilitychange', () => { if (document.hidden && S) lock('Gesperrt, weil die App verlassen wurde'); });
+
+/* ---------- boot ---------- */
+if (!window.crypto || !crypto.subtle) { $('#lockTitle').textContent='Nicht unterstützt'; setHint('Dieser Browser bietet keine sichere Verschlüsselung an.', true); document.querySelectorAll('.key').forEach(k=>k.disabled=true); }
+else showLock(readBlob() ? 'unlock' : 'setup');
+})();
+
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e) {}
+</script>
+
+</body>
+</html>
